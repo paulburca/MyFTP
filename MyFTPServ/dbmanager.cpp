@@ -4,13 +4,6 @@
 #include <QSqlError>
 
 int DbManager::connections = 0;
-QString Encrypt(const QString& password)
-{
-    QString password1 = password + 1;
-    QString value=password1;
-    return value;
-    //work in progress.
-}
 
 DbManager::DbManager( const char* path)
 {

@@ -17,7 +17,8 @@
 #include <QList>
 #include <dirent.h>
 #include <sys/stat.h>
-#define IP "192.168.1.103"
+#include <string.h>
+#define IP "192.168.1.102"
 extern int errno;
 int port = 8089;
 bool conn(int* sd){
@@ -49,8 +50,14 @@ Client_interface::Client_interface(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Client_interface)
 {
-    if(conn(&sd))
+    bool i;
+    if(conn(&sd)){
+        read(sd,&i,1);
         ui->setupUi(this);
+        if(!i){
+            ui->label_9->setText("The IP you are using is blacklisted, sorry :(");
+        }
+    }
 }
 
 Client_interface::~Client_interface()
@@ -67,12 +74,14 @@ void Client_interface::on_pushButton_clicked()
     if(!login(sd,user, password))
         //daca nu reuseste sa se logheze
         perror("[login]");
-    else
-    {
-        //pune numele fisierelor in treewidget
-        displayTree(user);
+   else{
+        strcpy(where,"~");
+        ui->label_6->setText(where);
+        //obtinem lista de fisiere din fisierul actual
+        displayTree();
         //schimbam pagina
-        ui->stackedWidget->setCurrentWidget(ui->page2);
+       ui->stackedWidget->setCurrentWidget(ui->page2);
+            qDebug()<<"1";
     }
 }
 
@@ -87,122 +96,105 @@ void Client_interface::on_pushButton_2_clicked()
         perror("[register]");
 }
 
-void Client_interface::on_pushButton_3_clicked()
+
+void Client_interface::displayTree()
 {
-
-}
-
-void Client_interface::on_pushButton_4_clicked()
-{
-
-}
-
-void Client_interface::on_treeWidget_itemClicked(QTreeWidgetItem *item, int column)
-{
-
-}
-
-void Client_interface::on_treeWidget_2_itemClicked(QTreeWidgetItem *item, int column)
-{
-
-}
-
-void Client_interface::on_pushButton_7_clicked()
-{
-
-}
-
-void Client_interface::on_pushButton_5_clicked()
-{
-
-}
-
-void Client_interface::on_pushButton_6_clicked()
-{
-
-}
-
-void Client_interface::on_pushButton_8_clicked()
-{
-
-}
-
-void fnd(char *path, char* name, QTreeWidgetItem* item)
-{
-    DIR *dir;
-    struct dirent *de;
-    struct stat st;
-    stat(path, &st);
-    QList<QString> list;
-    if (S_ISDIR(st.st_mode))
+    int l=0;
+    char str[PATH_MAX];
+    if(read(sd,&l, 4)<=0)
+        perror("[cliread]");
+    read(sd,str,l);
+    str[l]='\0';
+    l=0;
+    ui->treeWidget->clear();
+    l=strlen(str);
+    if (l)
     {
-        if (NULL != (dir = opendir(path)))
+        char *q;
+        q = strtok(str, "\n");
+        while (q)//bucati de cod despartite de '\n'
         {
-            while (NULL != (de = readdir(dir)))
-            {
-                if (strcmp(de->d_name, ".")&&strcmp(de->d_name, ".."))
-                {
-                    struct stat s;
-                    char* newpath= new char[100];
-                    sprintf(newpath,"%s/%s",path,de->d_name);
-                    qDebug ("sarmale");
-                    stat(newpath, &s);
-                    QTreeWidgetItem* child = new QTreeWidgetItem;
-                    child->setText(0,de->d_name);
-                    child->setText(1,QString::number(s.st_size/1024));
-                    item->addChild(child);
-
-                    sprintf(newpath, "%s/%s", path, de->d_name);
-                    fnd(newpath, (de->d_name), child);
-                    //sprintf(name, "%s/%s", path, de->d_name);
-                }
-            }
-            closedir(dir);
+            QTreeWidgetItem* nm = new QTreeWidgetItem;
+            char *p;
+            p=strchr(q,'|');
+            strncpy(p,"",1);
+            //punem partea dinaintea lui "|" (numele fisierului)
+            nm->setText(0,q);
+            p=p+1;
+            //punem partea de dupa "|" (size-ul fisierului / daca este director sau nu)
+            nm->setText(1,p);
+            ui->treeWidget->addTopLevelItem(nm);
+            q=p;
+            q = strtok(NULL, "\n");
         }
     }
-
+}
+void Client_interface::on_pushButton1_clicked()
+{//transfer client-server
+    QString client = ui->lineEdit->text();
+    struct stat st;
+    stat(client.toStdString().c_str(),&st);
+    if(!S_ISDIR(st.st_mode)){
+        if(!transfer_to(sd,client))//verificam daca s-a reusit transferul
+            perror("[transfer_to]");
+     else displayTree();//actualizam lista de fisiere
+    }
 }
 
-void Client_interface::displayTree(QString username)
-{
-    ui->treeWidget->setColumnCount(2);
-    QStringList header;
-    header << "Name" << "size";
-    ui->treeWidget->setHeaderLabels(header);
-    ui->treeWidget_2->setHeaderLabels(header);
-    std::string text_current_path = (QDir::currentPath().toStdString()/*+'/'+username.toStdString()*/);
-    const char* current_path = text_current_path.c_str();
-    DIR *dir;
-    struct dirent *de;
-    struct stat st;
-    stat(current_path, &st);
-    if (S_ISDIR(st.st_mode))
-    {
-        if (NULL != (dir = opendir(current_path)))
-        {
-            while (NULL != (de = readdir(dir)))
-            {
-                if (strcmp(de->d_name, ".")&&strcmp(de->d_name, ".."))
-                {
-                    qDebug ("BRUH   ");
-                    QTreeWidgetItem* nm = new QTreeWidgetItem;
-                    nm->setText(0,de->d_name);
-                    ui->treeWidget->addTopLevelItem(nm);
-                    struct stat s;
-                    char* newpath= new char[100];
-                    sprintf(newpath,"%s/%s",current_path,de->d_name);
-                    qDebug ("sarmale");
-                    stat(newpath, &s);
-                    nm->setText(1,QString::number(s.st_size/1024));
-                    qDebug(de->d_name);
-                    if(S_ISDIR(s.st_mode)){
-                        qDebug(de->d_name);
-                        fnd((char*)newpath, (char*)(de->d_name),nm);
-                    }//sprintf(name, "%s/%s", path, de->d_name);
-                    qDebug("asdasdads");
-                }
-            }
-            closedir(dir);
+void Client_interface::on_pushButton2_clicked()
+{//transfer server-client
+    QString client = ui->lineEdit->text();
+    QString server = ui->lineEdit_2->text();
+    if(!transfer_from(sd,server, client))//verificam daca s-a reusit transferul
+            perror("[transfer_from]");
+}
+
+void Client_interface::on_pushButton3_clicked()
+{//newfolder server
+    QString name = ui->lineEdit_3->text();
+    if(!create_dir(sd, name))//verificam daca s-a creat un folder
+            perror("[newfolder]");
+    else displayTree();//actualizam lista de fisiere
+}
+
+void Client_interface::on_pushButton4_clicked()
+{//newfile server
+    QString name = ui->lineEdit_3->text();
+    QString content = ui->textEdit->toPlainText();
+    if(!create_file(sd, name, content))//verificam daca s-a creat noul fisier
+        perror("[newfile]");
+    else displayTree();//actualizam lista de fisiere
+}
+
+void Client_interface::on_pushButton5_clicked()
+{// delete
+    QString server = ui->lineEdit_3->text();
+    if(!deleter(sd,server))//verificam daca fisierul/documentul a fost sters
+        perror("[deleter]");
+    else displayTree();//actualizam lista de fisiere
+}
+
+void Client_interface::on_pushButton6_clicked()
+{// cd
+    QString loc = ui->lineEdit_3->text();
+    if(!cd(sd,loc))
+        perror("[cd]");
+    else {
+        sprintf(where,"%s/%s",where,loc.toStdString().c_str());//schimbam locatia actuala
+        ui->label_6->setText(where);//punem noua locatie intr-un label
+        displayTree();//actualizam lista de fisiere
+    }
+}
+
+void Client_interface::on_pushButton7_clicked()
+{// back
+    if(strcmp(ui->label_6->text().toStdString().c_str(),"~")){
+        if(!bk(sd))
+            perror("[bk]");
+        else {
+            strcpy(strrchr(where,'/'),"");//trecem la locatia anterioara
+            ui->label_6->setText(where);//punem noua locatie intr-un label
+            displayTree();//actualizam lista de fisiere
         }
     }
 }

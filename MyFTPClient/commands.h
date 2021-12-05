@@ -1,13 +1,15 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 #include <unistd.h>
+#include <mbedtls/sha512.h>
 #include<QString>
 bool login(int sd, QString name,QString password);
 bool reg(int sd, QString name, QString password);
-bool transfer_to(QString& data, QString& name, QString& location);
-bool transfer_from(QString& data, QString& name, QString& location);
-bool create_dir(QString& location);
-bool create_file(QString& location);
-void prepare_pg2();
-
+bool transfer_to(int sd, QString& nameC);
+bool transfer_from(int sd, QString& nameS, QString& locationC);
+bool create_dir(int sd, QString& name);
+bool create_file(int sd,QString& name, QString& content);
+bool deleter(int sd, QString& locationS);
+bool cd(int sd, QString& loc);
+bool bk(int sd);
 #endif // COMMANDS_H

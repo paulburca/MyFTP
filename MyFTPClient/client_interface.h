@@ -17,29 +17,28 @@ public:
 
 private slots:
 
-    void on_pushButton_clicked();
+    void on_pushButton_clicked();//login
 
-    void on_pushButton_2_clicked();
+    void on_pushButton_2_clicked();//register
 
-    void on_pushButton_3_clicked();
+    void on_pushButton1_clicked();//transfer client-server
 
-    void on_pushButton_4_clicked();
+    void on_pushButton2_clicked();//tranfer server-client
 
-    void on_treeWidget_itemClicked(QTreeWidgetItem *item, int column);
+    void on_pushButton3_clicked();//newfolder
 
-    void on_treeWidget_2_itemClicked(QTreeWidgetItem *item, int column);
+    void on_pushButton4_clicked();//newfile
 
-    void on_pushButton_7_clicked();
+    void on_pushButton5_clicked();//delete
 
-    void on_pushButton_5_clicked();
+    void on_pushButton6_clicked();//cd
 
-    void on_pushButton_6_clicked();
-
-    void on_pushButton_8_clicked();
+    void on_pushButton7_clicked();//back
 
 private:
     Ui::Client_interface *ui;
-    void displayTree(QString username);
-    int sd=0;
+    void displayTree();//algoritmul pentru modificare Treewidget-ului
+    int sd=0;//id-ul socket-ului catre server
+    char where[4096]="";//locatia actuala in server
 };
 #endif // CLIENT_INTERFACE_H
